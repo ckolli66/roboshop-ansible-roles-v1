@@ -3,16 +3,6 @@
     name: '@nodejs:20'
     state: present
 
-- name: Copy catalogue service
-  ansible.builtin.copy:
-    src: catalogue.service
-    dest: /etc/systemd/system/catalogue.service
-
-- name: Copy mongo repo file
-  ansible.builtin.copy:
-    src: mongo.repo
-    dest: /etc/yum.repos.d/mongo.repo
-
 - name: Create a user roboshop
   ansible.builtin.user:
     name: roboshop
@@ -32,6 +22,11 @@
   community.general.npm:
     path: /app
 
+- name: Copy mongo repo file
+  ansible.builtin.copy:
+    src: mongo.repo
+    dest: /etc/yum.repos.d/mongo.repo
+
 - name: Install mongodb
   ansible.builtin.dnf:
     name: mongodb-mongosh
@@ -48,6 +43,11 @@
   register: mongo_output
   failed_when: >
     ('E11000 duplicate key error' not in mongo_output.stderr) and (mongo_output.rc != 0)
+
+- name: Copy catalogue service
+  ansible.builtin.copy:
+    src: catalogue.service
+    dest: /etc/systemd/system/catalogue.service
 
 - name: Start nginx service
   ansible.builtin.systemd_service:
