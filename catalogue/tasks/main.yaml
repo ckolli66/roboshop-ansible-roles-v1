@@ -1,0 +1,57 @@
+- name: Install Nodejs
+  ansible.builtin.dnf:
+    name: '@nodejs:20'
+    state: present
+
+- name: Copy catalogue service
+  ansible.builtin.copy:
+    src: catalogue.service
+    dest: /etc/systemd/system/catalogue.service
+
+- name: Copy mongo repo file
+  ansible.builtin.copy:
+    src: mongo.repo
+    dest: /etc/yum.repos.d/mongo.repo
+
+- name: Create a user roboshop
+  ansible.builtin.user:
+    name: roboshop
+
+- name: Create app directory
+  ansible.builtin.file:
+    path: /app
+    state: directory
+
+- name: Download and extract app content
+  ansible.builtin.unarchive:
+    src: https://roboshop-artifacts.s3.amazonaws.com/catalogue-v3.zip
+    dest: /app
+    remote_src: yes
+
+- name: Install packages based on package.json.
+  community.general.npm:
+    path: /app
+
+- name: Install mongodb
+  ansible.builtin.dnf:
+    name: mongodb-mongosh
+    state: present
+
+- name: Load master data into MongoDB
+  ansible.builtin.command:
+    argv:
+      - mongosh
+      - --host
+      - "mongodb-dev.chanakyakolli.online"
+      - --file
+      - "/app/db/master-data.js"
+  register: mongo_output
+  failed_when: >
+    ('E11000 duplicate key error' not in mongo_output.stderr) and (mongo_output.rc != 0)
+
+- name: Start nginx service
+  ansible.builtin.systemd_service:
+    state: restarted
+    name: catalogue
+    enabled: true
+    daemon_reload: true
